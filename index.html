@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Vitrina de Medallas - Rework</title>
+    <link rel="stylesheet" href="styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <header>
+        <h1>Vitrina de Medallas</h1>
+        <div class="search-container">
+            <input type="text" id="searchUser" placeholder="Buscar usuario...">
+            <div id="autocompleteList"></div>
+            <button id="openRanking" class="ranking-button">🏆 Ranking</button>
+        </div>
+
+        <div class="filters">
+            <input type="text" id="searchMedal" placeholder="Buscar medalla...">
+            <div class="filter-group">
+                <span class="rareza-filter"><input type="checkbox" value="N" checked> <label>N</label></span>
+                <span class="rareza-filter"><input type="checkbox" value="R" checked> <label>R</label></span>
+                <span class="rareza-filter"><input type="checkbox" value="SR" checked> <label>SR</label></span>
+                <span class="rareza-filter"><input type="checkbox" value="SSR" checked> <label>SSR</label></span>
+                <span class="rareza-filter"><input type="checkbox" value="UR" checked> <label>UR</label></span>
+            </div>
+            <div class="extra-filters">
+                <label class="switch-label">
+                    <input type="checkbox" id="hideObtained"> Ocultar obtenidas
+                </label>
+                <select id="sortOrder">
+                    <option value="id">Orden: Por ID</option>
+                    <option value="rarity">Orden: Por Rareza</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <main id="medallasList">
+        </main>
+
+    <div id="rankingModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Ranking de Medallas</h2>
+            <div id="rankingList"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
