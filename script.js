@@ -157,26 +157,51 @@ function generarRanking() {
 // ==== PERFIL ====
 function initProfile() {
     const params = new URLSearchParams(window.location.search);
-    const userName = params.get('user');
-    const user = users.find(u => u.NombreUsuario.toLowerCase() === userName?.toLowerCase());
+    const userNameParam = params.get('user');
     
-    if (!user) { document.getElementById('username').textContent = "Usuario no encontrado"; return; }
+    // Buscamos al usuario (ignorar mayúsculas/minúsculas)
+    const user = users.find(u => u.NombreUsuario.toLowerCase() === userNameParam?.toLowerCase());
+    
+    if (!user) {
+        document.getElementById('username').textContent = "Usuario no encontrado";
+        return;
+    }
 
+    // Rellenar datos básicos
     document.getElementById('username').textContent = user.NombreUsuario;
-    document.getElementById('avatar').src = user.AvatarURL;
+    const avatarImg = document.getElementById('avatar');
+    avatarImg.src = user.AvatarURL;
+    avatarImg.alt = user.NombreUsuario;
 
+    // Procesar medallas del usuario
     const userMedalIds = user.MedallasObtenidas ? user.MedallasObtenidas.split(',').map(id => id.trim()) : [];
-    document.getElementById('totalMedals').textContent = `Medallas totales: ${userMedalIds.length}`;
-
+    const conteo = { N: 0, R: 0, SR: 0, SSR: 0, UR: 0 };
+    
     const list = document.getElementById('userMedals');
     list.innerHTML = '';
+
     userMedalIds.forEach(mid => {
         const m = medals.find(med => med.ID === mid);
-        if(m) {
+        if (m) {
+            conteo[m.Rareza]++;
             const div = document.createElement('div');
-            div.className = `medalla ${m.Rareza}`;
-            div.innerHTML = `<img src="${m.ImagenURL}"><div><h2>${m.Nombre}</h2><p>${m.Descripción}</p></div>`;
+            // Usamos las mismas clases CSS que en el index para el brillo
+            div.className = `medalla ${m.Rareza}`; 
+            div.innerHTML = `
+                <img src="${m.ImagenURL}" alt="${m.Nombre}">
+                <div>
+                    <h2>${m.Nombre}</h2>
+                    <p>${m.Descripción}</p>
+                    <span class="rarity-${m.Rareza}" style="font-weight:bold">${m.Rareza}</span>
+                </div>
+            `;
             list.appendChild(div);
         }
     });
+
+    // Actualizar contadores visuales
+    document.getElementById('totalMedals').textContent = `Total Medallas: ${userMedalIds.length}`;
+    document.getElementById('rarityCount').innerHTML = ['N', 'R', 'SR', 'SSR', 'UR']
+        .map(r => `<span class="rarity-badge rarity-${r}">${r}: ${conteo[r]}</span>`)
+        .join('');
 }
