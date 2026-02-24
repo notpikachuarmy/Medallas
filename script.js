@@ -11,13 +11,11 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(([medalsData, usersData]) => {
             medals = medalsData;
             users = usersData;
-            
             if (document.getElementById('medallasList')) initIndex();
             if (document.getElementById('userMedals')) initProfile();
         });
 });
 
-// ==== UTILIDADES ====
 async function fetchCSV(url) {
     const res = await fetch(url);
     const text = await res.text();
@@ -41,13 +39,11 @@ function parseCSVLine(line) {
     result.push(current); return result;
 }
 
-// ==== LÓGICA PRINCIPAL (INDEX) ====
+// ==== INDEX ====
 function initIndex() {
     const searchUser = document.getElementById('searchUser');
     const autocompleteList = document.getElementById('autocompleteList');
-    const modal = document.getElementById('rankingModal');
-
-    // Autocomplete
+    
     searchUser.addEventListener('input', () => {
         const query = searchUser.value.toLowerCase().trim();
         autocompleteList.innerHTML = '';
@@ -61,30 +57,16 @@ function initIndex() {
         });
     });
 
-    // Eventos Filtros
     document.getElementById('searchMedal').addEventListener('input', renderMedals);
     document.getElementById('hideObtained').addEventListener('change', renderMedals);
     document.getElementById('sortOrder').addEventListener('change', renderMedals);
     document.querySelectorAll('.rareza-filter input').forEach(cb => cb.addEventListener('change', renderMedals));
 
-    // Modal Ranking
-    document.getElementById('openRanking').onclick = () => {
-        generarRanking();
-        modal.style.display = "block";
-    };
+    const modal = document.getElementById('rankingModal');
+    document.getElementById('openRanking').onclick = () => { generarRanking(); modal.style.display = "block"; };
     document.querySelector('.close-modal').onclick = () => modal.style.display = "none";
     window.onclick = (e) => { if (e.target == modal) modal.style.display = "none"; };
 
-    renderMedals();
-}
-
-function toggleMedal(id) {
-    if (obtainedMedals.includes(id)) {
-        obtainedMedals = obtainedMedals.filter(m => m !== id);
-    } else {
-        obtainedMedals.push(id);
-    }
-    localStorage.setItem('misMedallas', JSON.stringify(obtainedMedals));
     renderMedals();
 }
 
@@ -103,29 +85,56 @@ function renderMedals() {
         return matchesName && matchesRarity;
     });
 
-    if (sort === 'rarity') {
-        filtered.sort((a, b) => rarezaPuntos[b.Rareza] - rarezaPuntos[a.Rareza]);
-    }
+    if (sort === 'rarity') filtered.sort((a, b) => rarezaPuntos[b.Rareza] - rarezaPuntos[a.Rareza]);
 
     list.innerHTML = '';
     filtered.forEach(m => {
         const isObtained = obtainedMedals.includes(m.ID);
         const div = document.createElement('div');
         div.className = `medalla ${m.Rareza} ${isObtained ? 'obtained' : ''}`;
-        div.onclick = () => toggleMedal(m.ID);
-        div.innerHTML = `
-            <img src="${m.ImagenURL}" alt="${m.Nombre}">
-            <div>
-                <h2>${m.Nombre}</h2>
-                <p>${m.Descripción}</p>
-                <span class="rarity-${m.Rareza}" style="font-weight:bold">${m.Rareza}</span>
-            </div>
-        `;
+        div.onclick = () => {
+            if (obtainedMedals.includes(m.ID)) obtainedMedals = obtainedMedals.filter(id => id !== m.ID);
+            else obtainedMedals.push(m.ID);
+            localStorage.setItem('misMedallas', JSON.stringify(obtainedMedals));
+            renderMedals();
+        };
+        div.innerHTML = `<img src="${m.ImagenURL}"><div><h2>${m.Nombre}</h2><p>${m.Descripción}</p><span class="rarity-${m.Rareza}" style="font-weight:bold">${m.Rareza}</span></div>`;
         list.appendChild(div);
     });
 }
 
-// ==== RANKING DETALLADO ====
+// ==== PERFIL (GRID SIN CHECKS) ====
+function initProfile() {
+    const params = new URLSearchParams(window.location.search);
+    const userName = params.get('user');
+    const user = users.find(u => u.NombreUsuario.toLowerCase() === userName?.toLowerCase());
+    
+    if (!user) { document.getElementById('username').textContent = "Usuario no encontrado"; return; }
+
+    document.getElementById('username').textContent = user.NombreUsuario;
+    document.getElementById('avatar').src = user.AvatarURL;
+
+    const userMedalIds = user.MedallasObtenidas ? user.MedallasObtenidas.split(',').map(id => id.trim()) : [];
+    const conteo = { N: 0, R: 0, SR: 0, SSR: 0, UR: 0 };
+    
+    const list = document.getElementById('userMedals');
+    list.innerHTML = '';
+
+    userMedalIds.forEach(mid => {
+        const m = medals.find(med => med.ID === mid);
+        if (m) {
+            conteo[m.Rareza]++;
+            const div = document.createElement('div');
+            div.className = `medalla ${m.Rareza}`; // NOTA: No añadimos la clase 'obtained' para que NO salga el check
+            div.innerHTML = `<img src="${m.ImagenURL}"><div><h2>${m.Nombre}</h2><p>${m.Descripción}</p><span class="rarity-${m.Rareza}" style="font-weight:bold">${m.Rareza}</span></div>`;
+            list.appendChild(div);
+        }
+    });
+
+    document.getElementById('totalMedals').textContent = `Medallas totales: ${userMedalIds.length}`;
+    document.getElementById('rarityCount').innerHTML = ['N', 'R', 'SR', 'SSR', 'UR'].map(r => `<span class="rarity-badge rarity-${r}">${r}: ${conteo[r]}</span>`).join('');
+}
+
 function generarRanking() {
     const rankingElem = document.getElementById('rankingList');
     const ranking = users.map(u => {
@@ -142,66 +151,12 @@ function generarRanking() {
     rankingElem.innerHTML = ranking.map((u, i) => `
         <div class="ranking-item" style="display:flex; align-items:center; gap:15px; margin-bottom:12px; background:#252525; padding:15px; border-radius:12px; border: 1px solid #333;">
             <div style="font-size:1.5rem; font-weight:bold; width:35px; color:#555">${i+1}</div>
-            <img src="${u.AvatarURL}" style="width:55px; height:55px; border-radius:50%; border:2px solid #444">
+            <img src="${u.AvatarURL}" style="width:55px; height:55px; border-radius:50%; border:2px solid #444; object-fit:cover;">
             <div style="flex-grow:1">
                 <a href="perfil.html?user=${encodeURIComponent(u.NombreUsuario)}" style="color:gold; text-decoration:none; font-weight:bold; font-size:1.1rem">${u.NombreUsuario}</a>
-                <div style="font-size:0.85rem; margin: 4px 0;">Total: <strong>${u.total}</strong> | Puntos: <strong>${u.pts}</strong></div>
-                <div style="display:flex; gap:4px; flex-wrap:wrap">
-                    ${['N','R','SR','SSR','UR'].map(r => `<span class="rarity-badge rarity-${r}">${r}: ${u.conteo[r]}</span>`).join('')}
-                </div>
+                <div style="font-size:0.85rem; margin: 4px 0;">Total: ${u.total} | Puntos: ${u.pts}</div>
+                <div style="display:flex; gap:4px; flex-wrap:wrap">${['N','R','SR','SSR','UR'].map(r => `<span class="rarity-badge rarity-${r}">${r}: ${u.conteo[r]}</span>`).join('')}</div>
             </div>
         </div>
     `).join('');
-}
-
-// ==== PERFIL ====
-function initProfile() {
-    const params = new URLSearchParams(window.location.search);
-    const userNameParam = params.get('user');
-    
-    // Buscamos al usuario (ignorar mayúsculas/minúsculas)
-    const user = users.find(u => u.NombreUsuario.toLowerCase() === userNameParam?.toLowerCase());
-    
-    if (!user) {
-        document.getElementById('username').textContent = "Usuario no encontrado";
-        return;
-    }
-
-    // Rellenar datos básicos
-    document.getElementById('username').textContent = user.NombreUsuario;
-    const avatarImg = document.getElementById('avatar');
-    avatarImg.src = user.AvatarURL;
-    avatarImg.alt = user.NombreUsuario;
-
-    // Procesar medallas del usuario
-    const userMedalIds = user.MedallasObtenidas ? user.MedallasObtenidas.split(',').map(id => id.trim()) : [];
-    const conteo = { N: 0, R: 0, SR: 0, SSR: 0, UR: 0 };
-    
-    const list = document.getElementById('userMedals');
-    list.innerHTML = '';
-
-    userMedalIds.forEach(mid => {
-        const m = medals.find(med => med.ID === mid);
-        if (m) {
-            conteo[m.Rareza]++;
-            const div = document.createElement('div');
-            // Usamos las mismas clases CSS que en el index para el brillo
-            div.className = `medalla ${m.Rareza}`; 
-            div.innerHTML = `
-                <img src="${m.ImagenURL}" alt="${m.Nombre}">
-                <div>
-                    <h2>${m.Nombre}</h2>
-                    <p>${m.Descripción}</p>
-                    <span class="rarity-${m.Rareza}" style="font-weight:bold">${m.Rareza}</span>
-                </div>
-            `;
-            list.appendChild(div);
-        }
-    });
-
-    // Actualizar contadores visuales
-    document.getElementById('totalMedals').textContent = `Total Medallas: ${userMedalIds.length}`;
-    document.getElementById('rarityCount').innerHTML = ['N', 'R', 'SR', 'SSR', 'UR']
-        .map(r => `<span class="rarity-badge rarity-${r}">${r}: ${conteo[r]}</span>`)
-        .join('');
 }
